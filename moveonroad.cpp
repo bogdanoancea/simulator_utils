@@ -19,7 +19,9 @@ struct Point {
 	double x;
 	double y;
 };
+
 typedef struct Point point;
+
 int main() {
 	point* road;
 	road = new point[100];
@@ -129,7 +131,7 @@ int main() {
 		}
 	}
 
-	//now the chalenge is to switch the roads!
+	//now the challenge is to switch the roads!
 	person.close();
 	return 0;
 }
