@@ -34,14 +34,9 @@ struct Point2 {
 	double y;
 };
 
-typedef struct Point point;
-
-int main() {
-	point* road;
-	road = new point[100];
-	road[0] = point { 1, 1 };
-	for (int i = 1; i < 100; i++) {
+//typedef struct Point point;
 typedef struct Point2 point;
+
 
 bool end_of_the_road(int index) {
 	if (index == N - 1)
