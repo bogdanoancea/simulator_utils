@@ -122,13 +122,18 @@ pair<LineString*, LineString*> findCrossingPair(LineString* ls1, LineString* ls2
 	CoordinateSequence* cls2 = ls2->getCoordinates();
 	CoordinateSequence* new_cls1 = new CoordinateArraySequence();
 	CoordinateSequence* new_cls2 = new CoordinateArraySequence();
+	vector<Coordinate> intersection_points;
+	vector<LineString*> intersection_segments2;
+
+	// ls1 with ls2
 	for (size_t i = 0; i < ls1->getNumPoints() - 1; i += 1) {
 		Coordinate cls1_c1 = cls1->getAt(i);
 		Coordinate cls1_c2 = cls1->getAt(i + 1);
 		CoordinateSequence* crossingPair1 = new CoordinateArraySequence();
 		crossingPair1->add(cls1_c1);
 		crossingPair1->add(cls1_c2);
-		new_cls1->add(cls1_c1);
+		if (i == 0)
+			new_cls1->add(cls1_c1);
 		LineString* segm1 = m_globalFactory->createLineString(crossingPair1);
 		if (segm1->crosses(ls2)) {
 			for (size_t j = 0; j < ls2->getNumPoints() - 1; j += 1) {
@@ -137,22 +142,59 @@ pair<LineString*, LineString*> findCrossingPair(LineString* ls1, LineString* ls2
 				CoordinateSequence* crossingPair2 = new CoordinateArraySequence();
 				crossingPair2->add(cls2_c1);
 				crossingPair2->add(cls2_c2);
-				new_cls2->add(cls2_c1);
 				LineString* segm2 = m_globalFactory->createLineString(crossingPair2);
 				if (segm1->crosses(segm2)) {
 					LineIntersector* lineIntersector = new LineIntersector();
 					lineIntersector->computeIntersection(cls1_c1, cls1_c2, cls2_c1, cls2_c2);
 					Coordinate intersect = lineIntersector->getIntersection(0);
+					intersection_points.push_back(intersect);
+					intersection_segments2.push_back(segm2);
 					cout << " intersectia la: " << intersect.toString() << endl;
 					new_cls1->add(intersect);
-					new_cls2->add(intersect);
-					//aici trebuie introdusa
 				}
-				new_cls2->add(cls2_c2);
 			}
 		}
 		new_cls1->add(cls1_c2);
 	}
+	for (size_t i = 0; i < ls2->getNumPoints(); i++) {
+		Coordinate c = cls2->getAt(i);
+		new_cls2->add(c);
+		for (size_t k = 0; k < intersection_points.size(); k++) {
+			const Coordinate intersect = intersection_segments2[k]->getCoordinateN(0);
+			if (c.equals(intersect)) {
+				new_cls2->add(intersection_points.at(k));
+			}
+		}
+	}
+	// ls2 with ls1
+//	for (size_t i = 0; i < ls2->getNumPoints() - 1; i += 1) {
+//		Coordinate cls2_c1 = cls2->getAt(i);
+//		Coordinate cls2_c2 = cls2->getAt(i + 1);
+//		CoordinateSequence* crossingPair2 = new CoordinateArraySequence();
+//		crossingPair2->add(cls2_c1);
+//		crossingPair2->add(cls2_c2);
+//		if (i == 0)
+//			new_cls2->add(cls2_c1);
+//		LineString* segm2 = m_globalFactory->createLineString(crossingPair2);
+//		if (segm2->crosses(ls1)) {
+//			for (size_t j = 0; j < ls1->getNumPoints() - 1; j += 1) {
+//				Coordinate cls1_c1 = cls1->getAt(j);
+//				Coordinate cls1_c2 = cls1->getAt(j + 1);
+//				CoordinateSequence* crossingPair1 = new CoordinateArraySequence();
+//				crossingPair1->add(cls1_c1);
+//				crossingPair1->add(cls1_c2);
+//				LineString* segm1 = m_globalFactory->createLineString(crossingPair1);
+//				if (segm2->crosses(segm1)) {
+//					LineIntersector* lineIntersector = new LineIntersector();
+//					lineIntersector->computeIntersection(cls2_c1, cls2_c2, cls1_c1, cls1_c2);
+//					Coordinate intersect = lineIntersector->getIntersection(0);
+//					cout << " intersectia la: " << intersect.toString() << endl;
+//					new_cls2->add(intersect);
+//				}
+//			}
+//		}
+//		new_cls2->add(cls2_c2);
+//	}
 	LineString* newls1 = m_globalFactory->createLineString(new_cls1);
 	LineString* newls2 = m_globalFactory->createLineString(new_cls2);
 
@@ -168,8 +210,8 @@ CoordinateSequence* move_person_on_road(double step_length, Coordinate start, Li
 	double x0 = start.x, y0 = start.y, x1, y1;
 	int i_on_road = 0;
 	CoordinateSequence* coords = road->getCoordinates();
-	for(size_t j = 0; j < road->getNumPoints();j ++)
-		if(coords->getAt(j).equals(start)){
+	for (size_t j = 0; j < road->getNumPoints(); j++)
+		if (coords->getAt(j).equals(start)) {
 			i_on_road = j;
 			break;
 		}
@@ -207,16 +249,15 @@ int main() {
 
 	LineString* road1 = create_road1(N);
 	LineString* road2 = create_road2(N);
+	cout << "road 2 " << road2->toString() << endl;
 	cout << " se intersecteaza? " << road1->crosses(road2) << endl;
 	pair<LineString*, LineString*> l = findCrossingPair(road1, road2);
-	cout << l.first->toString() << endl;
-	cout << l.second->toString() << endl;
-
+	cout << "road 2 " << l.second->toString() << endl;
 	ofstream street1, street2;
 	try {
 		street1.open("street1.csv", ios::out);
 		street2.open("street2.csv", ios::out);
-		for (int i = 0; i < N; i++) {
+		for (size_t i = 0; i < l.first->getNumPoints(); i++) {
 			street1 << l.first->getCoordinateN(i).x << "," << l.first->getCoordinateN(i).y << endl;
 			street2 << l.second->getCoordinateN(i).x << "," << l.second->getCoordinateN(i).y << endl;
 		}
@@ -225,66 +266,66 @@ int main() {
 	} catch (ofstream::failure& e) {
 		cerr << "Error opening output files!" << endl;
 	}
-	move_person_on_road(25, Coordinate(1,1), road1, 600);
+	move_person_on_road(25, Coordinate(1, 1), road1, 600);
 	//cout << g->toString();
 	cout << "!!!Hello World!!!" << endl; // prints !!!Hello World!!!
-/*
-	double d = 5;
-	double x0 = 1, y0 = 1, x1, y1;
-	int i_on_road = 0;
-	ofstream person;
-	int step = 0;
-	person.open("person_move.csv", ios::out);
-	for (int j = 0; j < STEPS; j++) {
-		double d_remain = d;
-		while (d_remain > 0 && !end_of_the_road(i_on_road)) {
-			point p = road[++i_on_road];
-			if (sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0)) > d) {
-				double costheta = (p.x - x0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
-				double sintheta = (p.y - y0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
-				x1 = x0 + d * costheta;
-				y1 = y0 + d * sintheta;
-				d_remain = 0;
-				i_on_road--;
-			} else {
-				x1 = p.x;
-				y1 = p.y;
-				d_remain = d - sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
-			}
-			x0 = x1;
-			y0 = y1;
-			step++;
-			person << step << "," << x1 << "," << y1 << endl;
-		}
-	}
-	cout << i_on_road;
+	/*
+	 double d = 5;
+	 double x0 = 1, y0 = 1, x1, y1;
+	 int i_on_road = 0;
+	 ofstream person;
+	 int step = 0;
+	 person.open("person_move.csv", ios::out);
+	 for (int j = 0; j < STEPS; j++) {
+	 double d_remain = d;
+	 while (d_remain > 0 && !end_of_the_road(i_on_road)) {
+	 point p = road[++i_on_road];
+	 if (sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0)) > d) {
+	 double costheta = (p.x - x0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+	 double sintheta = (p.y - y0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+	 x1 = x0 + d * costheta;
+	 y1 = y0 + d * sintheta;
+	 d_remain = 0;
+	 i_on_road--;
+	 } else {
+	 x1 = p.x;
+	 y1 = p.y;
+	 d_remain = d - sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+	 }
+	 x0 = x1;
+	 y0 = y1;
+	 step++;
+	 person << step << "," << x1 << "," << y1 << endl;
+	 }
+	 }
+	 cout << i_on_road;
 
-	//go back
-	for (int j = 0; j < STEPS; j++) {
-		double d_remain = d;
-		while (d_remain > 0 && !start_of_the_road(i_on_road)) {
-			point p = road[--i_on_road];
-			if (sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0)) > d) {
-				double costheta = (-p.x + x0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
-				double sintheta = (-p.y + y0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
-				x1 = x0 - d * costheta;
-				y1 = y0 - d * sintheta;
-				d_remain = 0;
-				i_on_road++;
-			} else {
-				x1 = p.x;
-				y1 = p.y;
-				d_remain = d - sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
-			}
-			x0 = x1;
-			y0 = y1;
-			step++;
-			person << step << "," << x1 << "," << y1 << endl;
-		}
-	}
+	 //go back
+	 for (int j = 0; j < STEPS; j++) {
+	 double d_remain = d;
+	 while (d_remain > 0 && !start_of_the_road(i_on_road)) {
+	 point p = road[--i_on_road];
+	 if (sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0)) > d) {
+	 double costheta = (-p.x + x0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+	 double sintheta = (-p.y + y0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+	 x1 = x0 - d * costheta;
+	 y1 = y0 - d * sintheta;
+	 d_remain = 0;
+	 i_on_road++;
+	 } else {
+	 x1 = p.x;
+	 y1 = p.y;
+	 d_remain = d - sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+	 }
+	 x0 = x1;
+	 y0 = y1;
+	 step++;
+	 person << step << "," << x1 << "," << y1 << endl;
+	 }
+	 }
 
-	//now the chalenge is to switch the roads!
-	person.close();
-*/
+	 //now the chalenge is to switch the roads!
+	 person.close();
+	 */
 	return 0;
 }
