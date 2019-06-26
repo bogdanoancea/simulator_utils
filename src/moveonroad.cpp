@@ -209,17 +209,17 @@ CoordinateSequence* move_person_on_road(double step_length, Coordinate start, Li
 
 	double x0 = start.x, y0 = start.y, x1, y1;
 	int i_on_road = 0;
+	ofstream person;
+	person.open("person_move.csv", ios::out);
+
 	CoordinateSequence* coords = road->getCoordinates();
 	for (size_t j = 0; j < road->getNumPoints(); j++)
 		if (coords->getAt(j).equals(start)) {
 			i_on_road = j;
 			break;
 		}
-
-	ofstream person;
 	int step_no = 0;
-	person.open("person_move.csv", ios::out);
-	for (int j = 0; j < NSTEPS; j++) {
+	while(step_no < NSTEPS) {
 		double d_remain = step_length;
 		while (d_remain > 0 && !end_of_the_road(i_on_road)) {
 			Coordinate p = road->getCoordinateN(++i_on_road);
@@ -240,6 +240,7 @@ CoordinateSequence* move_person_on_road(double step_length, Coordinate start, Li
 			step_no++;
 			person << step_no << "," << x1 << "," << y1 << endl;
 		}
+		d_remain = step_length;
 		while (d_remain > 0 && !start_of_the_road(i_on_road)) {
 			Coordinate p = road->getCoordinateN(--i_on_road);
 			if (sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0)) > step_length) {
