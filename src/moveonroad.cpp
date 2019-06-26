@@ -240,6 +240,25 @@ CoordinateSequence* move_person_on_road(double step_length, Coordinate start, Li
 			step_no++;
 			person << step_no << "," << x1 << "," << y1 << endl;
 		}
+		while (d_remain > 0 && !start_of_the_road(i_on_road)) {
+			Coordinate p = road->getCoordinateN(--i_on_road);
+			if (sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0)) > step_length) {
+				double costheta = (-p.x + x0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+				double sintheta = (-p.y + y0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+				x1 = x0 - step_length * costheta;
+				y1 = y0 - step_length * sintheta;
+				d_remain = 0;
+				i_on_road++;
+			} else {
+				x1 = p.x;
+				y1 = p.y;
+				d_remain = step_length - sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+			}
+			x0 = x1;
+			y0 = y1;
+			step_no++;
+			person << step_no << "," << x1 << "," << y1 << endl;
+		}
 	}
 	person.close();
 	return result;
@@ -267,65 +286,65 @@ int main() {
 		cerr << "Error opening output files!" << endl;
 	}
 	move_person_on_road(25, Coordinate(1, 1), road1, 600);
-	//cout << g->toString();
+//cout << g->toString();
 	cout << "!!!Hello World!!!" << endl; // prints !!!Hello World!!!
-	/*
-	 double d = 5;
-	 double x0 = 1, y0 = 1, x1, y1;
-	 int i_on_road = 0;
-	 ofstream person;
-	 int step = 0;
-	 person.open("person_move.csv", ios::out);
-	 for (int j = 0; j < STEPS; j++) {
-	 double d_remain = d;
-	 while (d_remain > 0 && !end_of_the_road(i_on_road)) {
-	 point p = road[++i_on_road];
-	 if (sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0)) > d) {
-	 double costheta = (p.x - x0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
-	 double sintheta = (p.y - y0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
-	 x1 = x0 + d * costheta;
-	 y1 = y0 + d * sintheta;
-	 d_remain = 0;
-	 i_on_road--;
-	 } else {
-	 x1 = p.x;
-	 y1 = p.y;
-	 d_remain = d - sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
-	 }
-	 x0 = x1;
-	 y0 = y1;
-	 step++;
-	 person << step << "," << x1 << "," << y1 << endl;
-	 }
-	 }
-	 cout << i_on_road;
+			/*
+			 double d = 5;
+			 double x0 = 1, y0 = 1, x1, y1;
+			 int i_on_road = 0;
+			 ofstream person;
+			 int step = 0;
+			 person.open("person_move.csv", ios::out);
+			 for (int j = 0; j < STEPS; j++) {
+			 double d_remain = d;
+			 while (d_remain > 0 && !end_of_the_road(i_on_road)) {
+			 point p = road[++i_on_road];
+			 if (sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0)) > d) {
+			 double costheta = (p.x - x0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+			 double sintheta = (p.y - y0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+			 x1 = x0 + d * costheta;
+			 y1 = y0 + d * sintheta;
+			 d_remain = 0;
+			 i_on_road--;
+			 } else {
+			 x1 = p.x;
+			 y1 = p.y;
+			 d_remain = d - sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+			 }
+			 x0 = x1;
+			 y0 = y1;
+			 step++;
+			 person << step << "," << x1 << "," << y1 << endl;
+			 }
+			 }
+			 cout << i_on_road;
 
-	 //go back
-	 for (int j = 0; j < STEPS; j++) {
-	 double d_remain = d;
-	 while (d_remain > 0 && !start_of_the_road(i_on_road)) {
-	 point p = road[--i_on_road];
-	 if (sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0)) > d) {
-	 double costheta = (-p.x + x0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
-	 double sintheta = (-p.y + y0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
-	 x1 = x0 - d * costheta;
-	 y1 = y0 - d * sintheta;
-	 d_remain = 0;
-	 i_on_road++;
-	 } else {
-	 x1 = p.x;
-	 y1 = p.y;
-	 d_remain = d - sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
-	 }
-	 x0 = x1;
-	 y0 = y1;
-	 step++;
-	 person << step << "," << x1 << "," << y1 << endl;
-	 }
-	 }
+			 //go back
+			 for (int j = 0; j < STEPS; j++) {
+			 double d_remain = d;
+			 while (d_remain > 0 && !start_of_the_road(i_on_road)) {
+			 point p = road[--i_on_road];
+			 if (sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0)) > d) {
+			 double costheta = (-p.x + x0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+			 double sintheta = (-p.y + y0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+			 x1 = x0 - d * costheta;
+			 y1 = y0 - d * sintheta;
+			 d_remain = 0;
+			 i_on_road++;
+			 } else {
+			 x1 = p.x;
+			 y1 = p.y;
+			 d_remain = d - sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+			 }
+			 x0 = x1;
+			 y0 = y1;
+			 step++;
+			 person << step << "," << x1 << "," << y1 << endl;
+			 }
+			 }
 
-	 //now the chalenge is to switch the roads!
-	 person.close();
-	 */
+			 //now the chalenge is to switch the roads!
+			 person.close();
+			 */
 	return 0;
 }
