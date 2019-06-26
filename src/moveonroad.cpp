@@ -20,6 +20,7 @@
 #include <iostream>
 #include <string>
 #include <utility>
+#include <exception>
 
 #define N 100
 #define STEPS 200
@@ -149,7 +150,6 @@ pair<LineString*, LineString*> findCrossingPair(LineString* ls1, LineString* ls2
 					Coordinate intersect = lineIntersector->getIntersection(0);
 					intersection_points.push_back(intersect);
 					intersection_segments2.push_back(segm2);
-					cout << " intersectia la: " << intersect.toString() << endl;
 					new_cls1->add(intersect);
 				}
 			}
@@ -204,22 +204,32 @@ pair<LineString*, LineString*> findCrossingPair(LineString* ls1, LineString* ls2
 
 //https://stackoverflow.com/questions/31520536/compute-intersection-from-multiple-linestrings-using-jts
 
+int findPointOnRoad(LineString* road, Coordinate start) {
+	int result = -1;
+	CoordinateSequence* coords = road->getCoordinates();
+	for (size_t j = 0; j < road->getNumPoints(); j++)
+		if (coords->getAt(j).equals(start)) {
+			result = j;
+			break;
+		}
+	return result;
+}
+
+
 CoordinateSequence* move_person_on_road(double step_length, Coordinate start, LineString* road, int NSTEPS) {
 	CoordinateSequence* result = new CoordinateArraySequence();
 
 	double x0 = start.x, y0 = start.y, x1, y1;
-	int i_on_road = 0;
 	ofstream person;
 	person.open("person_move.csv", ios::out);
 
-	CoordinateSequence* coords = road->getCoordinates();
-	for (size_t j = 0; j < road->getNumPoints(); j++)
-		if (coords->getAt(j).equals(start)) {
-			i_on_road = j;
-			break;
-		}
+	int i_on_road = findPointOnRoad(road, start);
+	if (i_on_road == -1)
+		throw "start point not on road";
+
 	int step_no = 0;
-	while(step_no < NSTEPS) {
+	while (step_no < NSTEPS) {
+		// go forward
 		double d_remain = step_length;
 		while (d_remain > 0 && !end_of_the_road(i_on_road)) {
 			Coordinate p = road->getCoordinateN(++i_on_road);
@@ -240,6 +250,68 @@ CoordinateSequence* move_person_on_road(double step_length, Coordinate start, Li
 			step_no++;
 			person << step_no << "," << x1 << "," << y1 << endl;
 		}
+		// go backward
+		d_remain = step_length;
+		while (d_remain > 0 && !start_of_the_road(i_on_road)) {
+			Coordinate p = road->getCoordinateN(--i_on_road);
+			if (sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0)) > step_length) {
+				double costheta = (-p.x + x0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+				double sintheta = (-p.y + y0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+				x1 = x0 - step_length * costheta;
+				y1 = y0 - step_length * sintheta;
+				d_remain = 0;
+				i_on_road++;
+			} else {
+				x1 = p.x;
+				y1 = p.y;
+				d_remain = step_length - sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+			}
+			x0 = x1;
+			y0 = y1;
+			step_no++;
+			person << step_no << "," << x1 << "," << y1 << endl;
+		}
+	}
+	person.close();
+	return result;
+}
+
+
+CoordinateSequence* move_person_on_road_switch(double step_length, Coordinate start, LineString* road, int NSTEPS) {
+	CoordinateSequence* result = new CoordinateArraySequence();
+
+	double x0 = start.x, y0 = start.y, x1, y1;
+	ofstream person;
+	int i_on_road = findPointOnRoad(road, start);
+	if (i_on_road == -1)
+		throw "start point not on road";
+
+	person.open("person_move.csv", ios::out);
+
+	int step_no = 0;
+	while (step_no < NSTEPS) {
+		// go forward
+		double d_remain = step_length;
+		while (d_remain > 0 && !end_of_the_road(i_on_road)) {
+			Coordinate p = road->getCoordinateN(++i_on_road);
+			if (sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0)) > step_length) {
+				double costheta = (p.x - x0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+				double sintheta = (p.y - y0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+				x1 = x0 + step_length * costheta;
+				y1 = y0 + step_length * sintheta;
+				d_remain = 0;
+				i_on_road--;
+			} else {
+				x1 = p.x;
+				y1 = p.y;
+				d_remain = step_length - sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+			}
+			x0 = x1;
+			y0 = y1;
+			step_no++;
+			person << step_no << "," << x1 << "," << y1 << endl;
+		}
+		// go backward
 		d_remain = step_length;
 		while (d_remain > 0 && !start_of_the_road(i_on_road)) {
 			Coordinate p = road->getCoordinateN(--i_on_road);
@@ -266,13 +338,9 @@ CoordinateSequence* move_person_on_road(double step_length, Coordinate start, Li
 }
 
 int main() {
-
 	LineString* road1 = create_road1(N);
 	LineString* road2 = create_road2(N);
-	cout << "road 2 " << road2->toString() << endl;
-	cout << " se intersecteaza? " << road1->crosses(road2) << endl;
 	pair<LineString*, LineString*> l = findCrossingPair(road1, road2);
-	cout << "road 2 " << l.second->toString() << endl;
 	ofstream street1, street2;
 	try {
 		street1.open("street1.csv", ios::out);
@@ -286,66 +354,11 @@ int main() {
 	} catch (ofstream::failure& e) {
 		cerr << "Error opening output files!" << endl;
 	}
-	move_person_on_road(25, Coordinate(1, 1), road1, 600);
-//cout << g->toString();
-	cout << "!!!Hello World!!!" << endl; // prints !!!Hello World!!!
-			/*
-			 double d = 5;
-			 double x0 = 1, y0 = 1, x1, y1;
-			 int i_on_road = 0;
-			 ofstream person;
-			 int step = 0;
-			 person.open("person_move.csv", ios::out);
-			 for (int j = 0; j < STEPS; j++) {
-			 double d_remain = d;
-			 while (d_remain > 0 && !end_of_the_road(i_on_road)) {
-			 point p = road[++i_on_road];
-			 if (sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0)) > d) {
-			 double costheta = (p.x - x0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
-			 double sintheta = (p.y - y0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
-			 x1 = x0 + d * costheta;
-			 y1 = y0 + d * sintheta;
-			 d_remain = 0;
-			 i_on_road--;
-			 } else {
-			 x1 = p.x;
-			 y1 = p.y;
-			 d_remain = d - sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
-			 }
-			 x0 = x1;
-			 y0 = y1;
-			 step++;
-			 person << step << "," << x1 << "," << y1 << endl;
-			 }
-			 }
-			 cout << i_on_road;
+	try {
+		move_person_on_road(25, Coordinate(1, 1), road1, 600);
+	} catch (const char* msg) {
+		cout << msg;
+	}
 
-			 //go back
-			 for (int j = 0; j < STEPS; j++) {
-			 double d_remain = d;
-			 while (d_remain > 0 && !start_of_the_road(i_on_road)) {
-			 point p = road[--i_on_road];
-			 if (sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0)) > d) {
-			 double costheta = (-p.x + x0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
-			 double sintheta = (-p.y + y0) / sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
-			 x1 = x0 - d * costheta;
-			 y1 = y0 - d * sintheta;
-			 d_remain = 0;
-			 i_on_road++;
-			 } else {
-			 x1 = p.x;
-			 y1 = p.y;
-			 d_remain = d - sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
-			 }
-			 x0 = x1;
-			 y0 = y1;
-			 step++;
-			 person << step << "," << x1 << "," << y1 << endl;
-			 }
-			 }
-
-			 //now the chalenge is to switch the roads!
-			 person.close();
-			 */
 	return 0;
 }
