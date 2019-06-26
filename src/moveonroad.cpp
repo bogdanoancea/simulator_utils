@@ -207,14 +207,18 @@ pair<LineString*, LineString*> findCrossingPair(LineString* ls1, LineString* ls2
 int findPointOnRoad(LineString* road, Coordinate start) {
 	int result = -1;
 	CoordinateSequence* coords = road->getCoordinates();
-	for (size_t j = 0; j < road->getNumPoints(); j++)
+	cout << " road coordinates " << coords->getSize() << endl;
+	cout << " road points " << road->getNumPoints() << endl;
+	for (size_t j = 0; j < road->getNumPoints(); j++) {
+		cout << j << " " << coords->getAt(j) << endl;
 		if (coords->getAt(j).equals(start)) {
+			//cout << j << " " << coords->getAt(j) << endl;
 			result = j;
 			break;
 		}
+	}
 	return result;
 }
-
 
 CoordinateSequence* move_person_on_road(double step_length, Coordinate start, LineString* road, int NSTEPS) {
 	CoordinateSequence* result = new CoordinateArraySequence();
@@ -276,8 +280,27 @@ CoordinateSequence* move_person_on_road(double step_length, Coordinate start, Li
 	return result;
 }
 
+LineString* isPointOnOtherRoad(Coordinate c, LineString* road, vector<LineString*>& all_roads) {
+	int index = -1;
+	LineString* result = nullptr;
+	for (size_t i = 0; i < all_roads.size(); i++) {
+		LineString* r = all_roads.at(i);
+		if(!road->equals(r)) {
+			cout << " drumul " << r->toString() << endl;
+			cout << " punctul " << c.toString() << endl;
+			index = findPointOnRoad(r, c);
+			if(index != -1) {
+				result = r;
+				break;
+			}
+		}
+	}
+	//cout << " drumul inainte de return " << result->toString() << endl;
+	return result;
+}
 
-CoordinateSequence* move_person_on_road_switch(double step_length, Coordinate start, LineString* road, int NSTEPS) {
+
+CoordinateSequence* move_person_on_road_switch(double step_length, Coordinate start, LineString* road, vector<LineString*>& all_roads, int NSTEPS) {
 	CoordinateSequence* result = new CoordinateArraySequence();
 
 	double x0 = start.x, y0 = start.y, x1, y1;
@@ -305,6 +328,14 @@ CoordinateSequence* move_person_on_road_switch(double step_length, Coordinate st
 				x1 = p.x;
 				y1 = p.y;
 				d_remain = step_length - sqrt((p.x - x0) * (p.x - x0) + (p.y - y0) * (p.y - y0));
+				//check if p is on other road and switch
+				LineString* other = isPointOnOtherRoad(p, road, all_roads);
+				if(other != nullptr) {
+					cout << " in move person " << p.toString() << " : " << other->toString() << endl;
+					road = other;
+					i_on_road = findPointOnRoad(other, p);
+					//update i_on_road
+				}
 			}
 			x0 = x1;
 			y0 = y1;
@@ -354,11 +385,14 @@ int main() {
 	} catch (ofstream::failure& e) {
 		cerr << "Error opening output files!" << endl;
 	}
+	vector<LineString*> all_roads;
+	all_roads.push_back(l.first);
+	all_roads.push_back(l.second);
 	try {
-		move_person_on_road(25, Coordinate(1, 1), road1, 600);
+		//move_person_on_road(25, Coordinate(1, 1), road1, 600);
+		move_person_on_road_switch(25, Coordinate(1, 1), l.first, all_roads, 600);
 	} catch (const char* msg) {
 		cout << msg;
 	}
-
 	return 0;
 }
